@@ -2,8 +2,9 @@
 
 from __future__ import division
 from __future__ import absolute_import
-import settings
-from libraries.nrf import Bridge
+#import settings
+#from libraries.nrf import Bridge
+from nrf import Bridge
 import numpy as np
 import cv2
 import math

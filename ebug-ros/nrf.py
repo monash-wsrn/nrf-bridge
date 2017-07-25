@@ -318,7 +318,7 @@ class Bridge(object):
             device_pairing_list[device][u'psoc_id'] = tuple(device_pairing_list[device][u'psoc_id'])
         return device_pairing_list
 
-    def assign_static_addresses(self, path = u'eBugs_pairing_list.json'):
+    def assign_static_addresses(self, path = u'ebug_tab.json'):
         u'''
         consults a table to always assign the same 1-byte address and RGB led sequence to the same eBug
         returns the information on every conected devices : cameras, eBugs and unknown devices
@@ -385,26 +385,26 @@ class Bridge(object):
         print u'----\t--------------------\t-----------\t-------------------------------'
         for addr, info in self.camera.items():
             print addr,
-                u'\t',
-                u'-'.join([unicode(element) for element in info[u'psoc_id']]),
-                u'\t',
-                u'camera (0)'
+            u'\t',
+            u'-'.join([unicode(element) for element in info[u'psoc_id']]),
+            u'\t',
+            u'camera (0)'
         for addr, info in self.eBug.items():
             print addr,
-                u'\t',
-                u'-'.join([unicode(element) for element in info[u'psoc_id']]),
-                u'\t',
-                u'eBug (1)',
-                u'\t',
-                unicode(info[u'led_sequence'])
+            u'\t',
+            u'-'.join([unicode(element) for element in info[u'psoc_id']]),
+            u'\t',
+            u'eBug (1)',
+            u'\t',
+            unicode(info[u'led_sequence'])
         for psoc_id in self.unknown:
             print u'\t',
-                u'-'.join([unicode(element) for element in psoc_id]),
-                u'\t',
-                u'UNKNOWN'
+            u'-'.join([unicode(element) for element in psoc_id]),
+            u'\t',
+            u'UNKNOWN'
 
     def flash_all_ebugs(self, filename, which=None):
-        u"""
+        """
         Used by flash.py
         """
         for i,j in self.assign_addresses().items():
