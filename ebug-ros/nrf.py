@@ -298,56 +298,6 @@ class Bridge:
             self.send_multicast('\xb3')
         else: self.send_packet('\xb3')
     
-    def load_device_info_from_file(self, file):
-        with open(file,u'r') as saved_device_info_file:
-            device_pairing_list = json.load(saved_device_info_file)
-
-        device_pairing_list = dict((int(key), value) for key, value in device_pairing_list.items())
-        for device in device_pairing_list:
-            if device_pairing_list[device].get(u'led_sequence'):
-                device_pairing_list[device][u'led_sequence'] = [codecs.encode(value) for value in device_pairing_list[device][u'led_sequence']]
-            device_pairing_list[device][u'psoc_id'] = tuple(device_pairing_list[device][u'psoc_id'])
-        return device_pairing_list
-
-    def assign_static_addresses(self, path = u'ebug_tab.json'):
-        """
-        consults a table to always assign the same 1-byte address and RGB led sequence to the same eBug
-        returns the information on every conected devices : cameras, eBugs and unknown devices
-        Ex : camera, eBug, unknown = nrf.assign_static_addresses('../nrf-bridge/eBugs_pairing_list.json')
-        """
-        self.unknown = set()
-        self.camera = dict()
-        self.eBug = dict()
-
-        eBugs_pairing_list = self.load_device_info_from_file(path)
-
-        eBugs_psoc_id_list = dict((value[u'psoc_id'], key) for key, value in eBugs_pairing_list.items())
-
-        self.forget_unicast_address() #everyone should forget their current addresses
-        for j in xrange(3): #repeat a few times in case of collisions
-            for i in xrange(7):
-                neighbours = self.neighbour_discovery(i,True) #find all neighbours that haven't been assigned an address
-                for x in neighbours:
-                    if x in eBugs_psoc_id_list:
-                        for t in xrange(10):
-                            try:
-                                address = eBugs_psoc_id_list[x]
-                                self.set_unicast_address(x, address)
-                                self.set_TX_address(address)
-                                self.send_packet('\x00')
-                                if(eBugs_pairing_list[address][u'type'] == 1):
-                                    self.camera[address] = eBugs_pairing_list[address]
-                                else:
-                                    self.eBug[address] = eBugs_pairing_list[address]
-                                break
-                            except:
-                                pass
-                    else:
-                        self.unknown.add(x)
-
-        self.display_devices()
-        return self.camera, self.eBug, self.unknown
-
     def assign_addresses(self):
         dbgprint('assign_addresses()')
         self.forget_unicast_address() #everyone should forget their current addresses
@@ -380,28 +330,69 @@ class Bridge:
         dbgprint(devices)
         return devices
 
+    def load_device_info_from_file(self, file):
+        with open(file,u'r') as device_table_file:
+            device_table = json.load(device_table_file)
+
+        device_table = dict((int(key), value) for key, value in device_table.items())
+        for device in device_table:
+            if device_table[device].get('led_sequence'):
+                device_table[device]['led_sequence'] = [codecs.encode(value) for value in device_table[device]['led_sequence']]
+            device_table[device]['psoc_id'] = tuple(device_table[device]['psoc_id'])
+        return device_table
+
+    def assign_static_addresses(self, path = 'ebug_tab.json'):
+        """
+        Consults a table to always assign the same 1-byte address and 
+        RGB LED sequence to the same eBug (identified by its pseudo-unique-ID).
+
+        Returns the information on every conected devices: Cameras, eBugs and 
+        unknown devices
+
+        Usage example : cameras, ebugs, unknowns = nrf.assign_static_addresses('../nrf-bridge/ebug_tab.json')
+        """
+        self.cameras = dict()
+        self.ebugs = dict()
+        self.unknowns = set()
+
+        device_table = self.load_device_info_from_file(path)
+
+        ebugs_psoc_id_list = dict((value[u'psoc_id'], key) for key, value in device_table.items())
+
+        self.forget_unicast_address() #everyone should forget their current addresses
+        for j in xrange(3): #repeat a few times in case of collisions
+            for i in xrange(7):
+                neighbours = self.neighbour_discovery(i,True) #find all neighbours that haven't been assigned an address
+                for x in neighbours:
+                    if x in ebugs_psoc_id_list:
+                        for t in xrange(10):
+                            try:
+                                address = ebugs_psoc_id_list[x]
+                                self.set_unicast_address(x, address)
+                                self.set_TX_address(address)
+                                self.send_packet('\x00')
+                                if(device_table[address]['type'] == 1):
+                                    self.cameras[address] = device_table[address]
+                                else:
+                                    self.ebugs[address] = device_table[address]
+                                break
+                            except:
+                                pass
+                    else:
+                        self.unknowns.add(x)
+
+        self.display_devices()
+        return self.cameras, self.ebugs, self.unknowns
+
     def display_devices(self):
         print 'Addr\tPSoC ID             \tType       \tLED Sequence'
-        print '----\t--------------------\t-----------\t-------------------------------'
-        for addr, info in self.camera.items():
-            print addr,
-            '\t',
-            '-'.join([unicode(element) for element in info['psoc_id']]),
-            '\t',
-            'camera (0)'
-        for addr, info in self.eBug.items():
-            print addr,
-            '\t',
-            '-'.join([unicode(element) for element in info['psoc_id']]),
-            '\t',
-            'eBug (1)',
-            '\t',
-            unicode(info['led_sequence'])
-        for psoc_id in self.unknown:
-            print '\t',
-            '-'.join([unicode(element) for element in psoc_id]),
-            '\t',
-            'UNKNOWN'
+        print '----\t--------------------\t----------\t-------------------------------'
+        for addr, info in self.cameras.items():
+            print addr, '\t', '-'.join([unicode(element) for element in info['psoc_id']]), '\t', 'camera (1)'
+        for addr, info in self.ebugs.items():
+            print addr, '\t', '-'.join([unicode(element) for element in info['psoc_id']]), '\t', 'ebug (0)', '\t', unicode(info['led_sequence'])
+        for psoc_id in self.unknowns:
+            print '\t', '-'.join([unicode(element) for element in psoc_id]), '\t', 'UNKNOWN'
 
     def flash_all_ebugs(self,filename,which=None):
         """
