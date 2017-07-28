@@ -393,6 +393,7 @@ class Bridge:
             print addr, '\t', '-'.join([unicode(element) for element in info['psoc_id']]), '\t', 'ebug (0)', '\t', unicode(info['led_sequence'])
         for psoc_id in self.unknowns:
             print '\t', '-'.join([unicode(element) for element in psoc_id]), '\t', 'UNKNOWN'
+        print '----\t--------------------\t----------\t-------------------------------'
 
     def flash_all_ebugs(self,filename,which=None):
         """
